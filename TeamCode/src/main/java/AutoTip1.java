@@ -16,7 +16,7 @@ public class AutoTip1 extends AutoFunction {
 
 
             stopResetMotors();
-            autonomous(0,0,0,0,0,0,0.8,0.8,0,0,6000,6000,3000);
+            autonomous(0,0,0,0,0,0,0.8,0,0,0,6000,6000,3000);
 
 
             stopResetMotors();
