@@ -1,3 +1,5 @@
+package org.firstinspires.ftc.teamcode.autonomos;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 @Autonomous (name = "AutoTip1", group = "Autonomous")

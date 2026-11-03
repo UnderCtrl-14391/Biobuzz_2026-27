@@ -1,274 +1,187 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.subsystems.Chassi;
+import org.firstinspires.ftc.teamcode.subsystems.Indexer;
+import org.firstinspires.ftc.teamcode.subsystems.Intake;
+import org.firstinspires.ftc.teamcode.subsystems.Liberador;
+import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
+/**
+ * TeleOp principal ("seletiva").
+ *
+ * Este arquivo NÃO controla o hardware diretamente: ele só lê o gamepad
+ * e diz a cada subsistema o que fazer. A lógica de cada mecanismo fica
+ * na pasta "subsystems".
+ *
+ * CONTROLES (somente o gamepad 1 é usado)
+ *   - Analógico esquerdo ... mover (frente/trás e para os lados), relativo ao campo
+ *   - Analógico direito .... girar
+ *   - L1 ................... liga/desliga o shooter (sobe até VELOCIDADE_ALVO_RPM)
+ *   - A .................... ativa o MODO TIRO:
+ *                              * os indexers giram levando o pólen até o liberador;
+ *                              * o liberador segura o pólen e só o solta para o
+ *                                shooter quando ele está acima de
+ *                                VELOCIDADE_MINIMA_PARA_ATIRAR_RPM.
+ *                            O modo tiro continua ativo até o R1 ser apertado.
+ *   - R1 (segurar) ......... coleta com o intake e cancela o modo tiro
+ */
 @TeleOp(name = "seletiva")
 public class teleopseletiva extends LinearOpMode {
-    // Hardware Members
-    private DcMotor frontLeftMotor, BackLeftMotor, frontRightMotor, BackRightMotor;
-    private DcMotor intake, intake2;
-    private DcMotorEx shooter, shooter2;
-    private Servo flower1, flower2;
-    private Servo trava1, trava2;
-    private IMU imu;
 
-    private final ElapsedTime runtime = new ElapsedTime();
+    // ===================== SUBSISTEMAS =====================
 
-    // Constants
-    public double INTAKE_IN_POWER = 0.7;
-    public double INTAKE_OUT_POWER = -0.9;
-    public double INTAKE_OFF_POWER = 0.0;
+    private Chassi chassi;
+    private Intake intake;
+    private Shooter shooter;
+    private Indexer indexer;
+    private Liberador liberador;
 
-    // Servo Positions for Flower
-    public double FLOWER_DOWN_POS = 0.0;
-    public double FLOWER_UP_POS = 1.0;
-    public double FLOWER1 = 1.0;
-    public double FLOWER2 = 1.0;
+    /** Cronômetro do tempo de partida (mostrado na telemetria). */
+    private final ElapsedTime tempoDePartida = new ElapsedTime();
 
-    // Servo Positions / States for Trava
-    public double TRAVA_DOWN_POS = 0.0;
-    public double TRAVA_UP_POS = 1.0;
-    public double TRAVA1_POS = 0.0;
-    public double TRAVA2_POS = 0.0;
+    // ===================== ESTADO DO TELEOP =====================
 
-    // Shooter Target Velocities (PIDF)
-    public double SHOOTER_VELOCITY_RIGHT = 2000.0; // Target PIDF velocity for Right Trigger
-    public double SHOOTER_VELOCITY_LEFT = 1200.0;  // Target PIDF velocity for Left Trigger
+    /** true quando o shooter foi ligado pelo L1. */
+    private boolean shooterLigado = false;
 
-    public double SLOW_DRIVETRAIN = 0.3;
+    /** true depois que o A é apertado; só volta a false quando o R1 é apertado. */
+    private boolean modoTiroAtivo = false;
 
-    // State Enums
-    public enum FlowerModes { UP, DOWN, OFF }
-    public enum TravaMode { UP, DOWN }
+    // Guardam se o botão estava apertado no ciclo anterior. Assim a ação
+    // só acontece no momento em que o botão é apertado, e não enquanto ele é segurado.
+    private boolean botaoL1Anterior = false;
+    private boolean botaoAAnterior = false;
 
-    private FlowerModes flowerMode = FlowerModes.UP;
-    private TravaMode trava1Mode = TravaMode.DOWN;
-    private TravaMode trava2Mode = TravaMode.DOWN;
-
-    // Edge-detection tracking for buttons
-    private boolean lastButtonA = false;
-    private boolean lastDpadUp = false;
-    private boolean lastDpadDown = false;
-
-    // PIDF Coefficients for Shooter Motors
-    public static double SHOOTER_P = 1.26;
-    public static double SHOOTER_I = 0.126;
-    public static double SHOOTER_D = 0.0;
-    public static double SHOOTER_F = 12.6;
-    public static double SHOOTER_POSITION_P = 5.0;
-
+    /**
+     * Método principal do OpMode: inicializa os subsistemas, espera o START
+     * e depois repete o ciclo de controle até a partida acabar.
+     */
     @Override
     public void runOpMode() {
-        // 1. HARDWARE MAPPING
-        frontLeftMotor = hardwareMap.get(DcMotor.class, "leftT");
-        BackLeftMotor = hardwareMap.get(DcMotor.class, "left");
-        frontRightMotor = hardwareMap.get(DcMotor.class, "rightT");
-        BackRightMotor = hardwareMap.get(DcMotor.class, "right");
-
-        intake = hardwareMap.get(DcMotor.class, "intake");
-        intake2 = hardwareMap.get(DcMotor.class, "intake2");
-        shooter = hardwareMap.get(DcMotorEx.class, "shooter");
-        shooter2 = hardwareMap.get(DcMotorEx.class, "shooter2");
-
-        try {
-            flower1 = hardwareMap.get(Servo.class, "flower");
-            flower2 = hardwareMap.get(Servo.class, "flower2");
-        } catch (Exception e) {
-            telemetry.addData("Warning", "flower / flower2 not found in hardware map");
-        }
-
-        try {
-            trava1 = hardwareMap.get(Servo.class, "trava1");
-            trava2 = hardwareMap.get(Servo.class, "trava2");
-        } catch (Exception e) {
-            telemetry.addData("Warning", "trava1 / trava2 not found in hardware map");
-        }
-
-        // 2. MOTOR DIRECTIONS
-        frontLeftMotor.setDirection(DcMotor.Direction.FORWARD);
-        BackLeftMotor.setDirection(DcMotor.Direction.FORWARD);
-        frontRightMotor.setDirection(DcMotor.Direction.FORWARD);
-        BackRightMotor.setDirection(DcMotor.Direction.REVERSE);
-
-        intake.setDirection(DcMotor.Direction.FORWARD);
-        intake2.setDirection(DcMotor.Direction.FORWARD);
-        shooter.setDirection(DcMotor.Direction.REVERSE);
-        shooter2.setDirection(DcMotor.Direction.REVERSE);
-
-        // 3. BRAKE BEHAVIOR
-        shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        shooter2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // 4. APPLY PIDF TO SHOOTER AND SHOOTER2
-        shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        shooter2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        shooter.setVelocityPIDFCoefficients(SHOOTER_P, SHOOTER_I, SHOOTER_D, SHOOTER_F);
-        shooter2.setVelocityPIDFCoefficients(SHOOTER_P, SHOOTER_I, SHOOTER_D, SHOOTER_F);
-        shooter.setPositionPIDFCoefficients(SHOOTER_POSITION_P);
-        shooter2.setPositionPIDFCoefficients(SHOOTER_POSITION_P);
-
-        // Set initial positions for servos
-        if (flower1 != null) flower1.setPosition(FLOWER1);
-        if (flower2 != null) flower2.setPosition(FLOWER2);
-        if (trava1 != null) trava1.setPosition(TRAVA1_POS);
-        if (trava2 != null) trava2.setPosition(TRAVA2_POS);
-
-        // 5. IMU INITIALIZATION
-        imu = hardwareMap.get(IMU.class, "imu");
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.RIGHT;
-        RevHubOrientationOnRobot.UsbFacingDirection usbDirection = RevHubOrientationOnRobot.UsbFacingDirection.UP;
-        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(logoDirection, usbDirection);
-        imu.initialize(new IMU.Parameters(orientationOnRobot));
-
-        telemetry.addData("Status", "Initialized");
-        telemetry.update();
+        inicializarSubsistemas();
 
         waitForStart();
-        runtime.reset();
+        tempoDePartida.reset();
 
         while (opModeIsActive()) {
-            // DRIVE LOGIC (Gamepad 1)
-            double forward = gamepad1.left_stick_y;
-            double strafe = gamepad1.left_stick_x;
-            double rotate = gamepad1.right_stick_x;
-
-            if (gamepad1.right_trigger >= 0.05) {
-                forward *= SLOW_DRIVETRAIN;
-                strafe *= SLOW_DRIVETRAIN;
-                rotate *= SLOW_DRIVETRAIN;
-            }
-
-            driveFieldRelative(forward, strafe, rotate);
-
-            // MECHANISM LOGIC (Gamepad 2)
-
-            // 1. Intake Logic
-            if (gamepad2.left_stick_y < -0.2) {
-                intake.setPower(INTAKE_IN_POWER);
-                intake2.setPower(INTAKE_IN_POWER);
-            } else if (gamepad2.left_stick_y > 0.2) {
-                intake.setPower(INTAKE_OUT_POWER);
-                intake2.setPower(INTAKE_OUT_POWER);
-            } else {
-                intake.setPower(INTAKE_OFF_POWER);
-                intake2.setPower(INTAKE_OFF_POWER);
-            }
-
-            // 2. Shooter / Shooter2 PIDF Velocity Control (Triggers)
-            if (gamepad2.right_trigger > 0.1) {
-                // Velocity 1 for Right Trigger
-                double targetVel = gamepad2.right_trigger * SHOOTER_VELOCITY_RIGHT;
-                setShooterVelocity(targetVel);
-            } else if (gamepad2.left_trigger > 0.1) {
-                // Velocity 2 for Left Trigger
-                double targetVel = gamepad2.left_trigger * SHOOTER_VELOCITY_LEFT;
-                setShooterVelocity(targetVel);
-            } else {
-                setShooterVelocity(0.0);
-            }
-
-            // 3. Flower Servo Toggle Logic (Button A)
-            // Press once -> DOWN (FLOWER_DOWN_POS = 0.0), Press again -> UP (FLOWER_UP_POS = 1.0)
-            boolean currentButtonA = gamepad2.a;
-            if (currentButtonA && !lastButtonA) {
-                if (flowerMode == FlowerModes.UP) {
-                    flowerMode = FlowerModes.DOWN;
-                    FLOWER1 = FLOWER_DOWN_POS;
-                    FLOWER2 = FLOWER_DOWN_POS;
-                } else {
-                    flowerMode = FlowerModes.UP;
-                    FLOWER1 = FLOWER_UP_POS;
-                    FLOWER2 = FLOWER_UP_POS;
-                }
-                if (flower1 != null) flower1.setPosition(FLOWER1);
-                if (flower2 != null) flower2.setPosition(FLOWER2);
-            }
-            lastButtonA = currentButtonA;
-
-            // 4. Trava 1 Mode Toggle (DPAD UP)
-            boolean currentDpadUp = gamepad2.dpad_up;
-            if (currentDpadUp && !lastDpadUp) {
-                if (trava1Mode == TravaMode.DOWN) {
-                    trava1Mode = TravaMode.UP;
-                    TRAVA1_POS = TRAVA_UP_POS;
-                } else {
-                    trava1Mode = TravaMode.DOWN;
-                    TRAVA1_POS = TRAVA_DOWN_POS;
-                }
-                if (trava1 != null) trava1.setPosition(TRAVA1_POS);
-            }
-            lastDpadUp = currentDpadUp;
-
-            // 5. Trava 2 Mode Toggle (DPAD DOWN)
-            boolean currentDpadDown = gamepad2.dpad_down;
-            if (currentDpadDown && !lastDpadDown) {
-                if (trava2Mode == TravaMode.DOWN) {
-                    trava2Mode = TravaMode.UP;
-                    TRAVA2_POS = TRAVA_UP_POS;
-                } else {
-                    trava2Mode = TravaMode.DOWN;
-                    TRAVA2_POS = TRAVA_DOWN_POS;
-                }
-                if (trava2 != null) trava2.setPosition(TRAVA2_POS);
-            }
-            lastDpadDown = currentDpadDown;
-
-            // Telemetry
-            telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Shooter 1 Velocity", shooter.getVelocity());
-            telemetry.addData("Shooter 2 Velocity", shooter2.getVelocity());
-            telemetry.addData("Flower Mode", flowerMode);
-            telemetry.addData("FLOWER1 Pos", FLOWER1);
-            telemetry.addData("FLOWER2 Pos", FLOWER2);
-            telemetry.addData("Trava 1 Mode", trava1Mode);
-            telemetry.addData("Trava 2 Mode", trava2Mode);
-            telemetry.addData("Heading", imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
-            telemetry.update();
+            // TESTE DO SHOOTER: chassi desativado. Descomente para voltar a dirigir.
+            // controlarChassi();
+            controlarShooter();
+            controlarIntakeEModoTiro();
+            atualizarTelemetria();
         }
     }
 
-    // Helper method for Shooter
-    public void setShooterVelocity(double velocity) {
-        shooter.setVelocity(velocity);
-        shooter2.setVelocity(velocity);
+    /** Cria todos os subsistemas e avisa na telemetria se algum servo não foi encontrado. */
+    private void inicializarSubsistemas() {
+        // TESTE DO SHOOTER: chassi desativado. Descomente para voltar a dirigir.
+        // chassi = new Chassi(hardwareMap);
+        // TESTE DO SHOOTER: intake desativado. Descomente para voltar a coletar.
+        // intake = new Intake(hardwareMap);
+        shooter = new Shooter(hardwareMap);
+        indexer = new Indexer(hardwareMap);
+        liberador = new Liberador(hardwareMap);
+
+        if (!indexer.isConectado()) {
+            telemetry.addData("Aviso", "indexers (flower / flower2) não encontrados como CRServo");
+        }
+        if (!liberador.isConectado()) {
+            telemetry.addData("Aviso", "liberador (trava2) não encontrado na configuração");
+        }
+
+        telemetry.addData("Status", "Inicializado");
+        telemetry.update();
     }
 
-    // Mecanum Drive Math
-    public void drive(double forward, double strafe, double rotate) {
-        double frontLeftPower = forward + strafe + rotate;
-        double backLeftPower = forward - strafe + rotate;
-        double frontRightPower = forward + strafe - rotate;
-        double backRightPower = forward - strafe - rotate;
-
-        // Normalize powers so no value exceeds 1.0
-        double max = Math.max(1.0, Math.abs(frontLeftPower));
-        max = Math.max(max, Math.abs(backLeftPower));
-        max = Math.max(max, Math.abs(frontRightPower));
-        max = Math.max(max, Math.abs(backRightPower));
-
-        frontLeftMotor.setPower(frontLeftPower / max);
-        BackLeftMotor.setPower(backLeftPower / max);
-        frontRightMotor.setPower(frontRightPower / max);
-        BackRightMotor.setPower(backRightPower / max);
+    /** Analógico esquerdo move o robô (relativo ao campo) e o analógico direito gira. */
+    private void controlarChassi() {
+        chassi.moverRelativoAoCampo(
+                gamepad1.left_stick_y,   // frente/trás
+                gamepad1.left_stick_x,   // lateral
+                gamepad1.right_stick_x); // rotação
     }
 
-    // Field Centric Drive Math
-    public void driveFieldRelative(double forward, double strafe, double rotate) {
-        double robotHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    /** Cada aperto do L1 liga ou desliga o shooter. */
+    private void controlarShooter() {
+        boolean botaoL1Atual = gamepad1.left_bumper;
+        if (botaoL1Atual && !botaoL1Anterior) {
+            shooterLigado = !shooterLigado;
+        }
+        botaoL1Anterior = botaoL1Atual;
 
-        // Rotate the movement vectors by the robot's heading
-        double rotX = strafe * Math.cos(robotHeading) - forward * Math.sin(robotHeading);
-        double rotY = strafe * Math.sin(robotHeading) + forward * Math.cos(robotHeading);
+        if (shooterLigado) {
+            shooter.ligar();
+        } else {
+            shooter.parar();
+        }
+    }
 
-        drive(rotY, rotX, rotate);
+    /**
+     * Controla o intake (R1) e o modo tiro (A).
+     *
+     * - Apertar A ativa o modo tiro.
+     * - Segurar R1 coleta com o intake e cancela o modo tiro.
+     * - No modo tiro, os indexers giram o tempo todo e o liberador só solta o pólen
+     *   quando o shooter está rápido o suficiente; se a velocidade cair
+     *   (por exemplo, logo após um disparo), o liberador volta a segurar e espera.
+     * - Fora do modo tiro, o liberador fica sempre segurando.
+     */
+    private void controlarIntakeEModoTiro() {
+        // Botão A: ativa o modo tiro (no momento do aperto)
+        boolean botaoAAtual = gamepad1.a;
+        if (botaoAAtual && !botaoAAnterior) {
+            modoTiroAtivo = true;
+        }
+        botaoAAnterior = botaoAAtual;
+
+        // Botão R1: coleta e cancela o modo tiro
+        // TESTE DO SHOOTER: intake desativado. O R1 continua cancelando o modo tiro.
+        // Descomente as linhas do intake para voltar a coletar.
+        if (gamepad1.right_bumper) {
+            modoTiroAtivo = false;
+            // intake.coletar();
+        } else {
+            // intake.parar();
+        }
+
+        // Executa o modo tiro
+        if (modoTiroAtivo) {
+            indexer.alimentar();
+            if (shooter.estaProntoParaAtirar()) {
+                liberador.liberar();
+            } else {
+                liberador.segurar();
+            }
+        } else {
+            indexer.parar();
+            liberador.segurar();
+        }
+    }
+
+    /** Mostra no Driver Station o estado de todos os subsistemas. */
+    private void atualizarTelemetria() {
+        telemetry.addData("Tempo de partida", tempoDePartida.toString());
+        // TESTE DO SHOOTER: chassi desativado. Descomente para voltar a dirigir.
+        // telemetry.addData("Ângulo do robô (graus)", chassi.getAnguloEmGraus());
+        telemetry.addData("Shooter", shooterLigado ? "LIGADO" : "DESLIGADO");
+        telemetry.addData("Shooter pronto para atirar", shooter.estaProntoParaAtirar() ? "SIM" : "NÃO");
+        telemetry.addData("Shooter alvo (RPM)", shooter.getVelocidadeAlvoRPM());
+        telemetry.addData("Shooter média (RPM)", shooter.getVelocidadeMediaRPM());
+        telemetry.addData("Shooter 1 (RPM)", shooter.getVelocidadeShooter1RPM());
+        telemetry.addData("Shooter 2 (RPM)", shooter.getVelocidadeShooter2RPM());
+        // Valores crus do encoder, para conferir a conversão para RPM
+        telemetry.addData("Shooter 1 (ticks/s)", shooter.getVelocidadeShooter1TicksPorSegundo());
+        telemetry.addData("Shooter 2 (ticks/s)", shooter.getVelocidadeShooter2TicksPorSegundo());
+        telemetry.addData("Tipo de motor na configuração", shooter.getTipoDeMotorConfigurado());
+        telemetry.addData("Modo tiro", modoTiroAtivo ? "ATIVO" : "INATIVO");
+        telemetry.addData("Indexers", indexer.estaGirando() ? "GIRANDO" : "PARADOS");
+        telemetry.addData("Liberador", liberador.getEstadoAtual());
+        // TESTE DO SHOOTER: intake desativado. Descomente para voltar a coletar.
+        // telemetry.addData("Intake", intake.getEstadoAtual());
+        telemetry.update();
     }
 }
