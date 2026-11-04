@@ -68,8 +68,7 @@ public class teleopseletiva extends LinearOpMode {
         tempoDePartida.reset();
 
         while (opModeIsActive()) {
-            // TESTE DO SHOOTER: chassi desativado. Descomente para voltar a dirigir.
-            // controlarChassi();
+            controlarChassi();
             controlarShooter();
             controlarIntakeEModoTiro();
             atualizarTelemetria();
@@ -78,10 +77,8 @@ public class teleopseletiva extends LinearOpMode {
 
     /** Cria todos os subsistemas e avisa na telemetria se algum servo não foi encontrado. */
     private void inicializarSubsistemas() {
-        // TESTE DO SHOOTER: chassi desativado. Descomente para voltar a dirigir.
-        // chassi = new Chassi(hardwareMap);
-        // TESTE DO SHOOTER: intake desativado. Descomente para voltar a coletar.
-        // intake = new Intake(hardwareMap);
+        chassi = new Chassi(hardwareMap);
+        intake = new Intake(hardwareMap);
         shooter = new Shooter(hardwareMap);
         indexer = new Indexer(hardwareMap);
         liberador = new Liberador(hardwareMap);
@@ -139,13 +136,11 @@ public class teleopseletiva extends LinearOpMode {
         botaoAAnterior = botaoAAtual;
 
         // Botão R1: coleta e cancela o modo tiro
-        // TESTE DO SHOOTER: intake desativado. O R1 continua cancelando o modo tiro.
-        // Descomente as linhas do intake para voltar a coletar.
         if (gamepad1.right_bumper) {
             modoTiroAtivo = false;
-            // intake.coletar();
+            intake.coletar();
         } else {
-            // intake.parar();
+            intake.parar();
         }
 
         // Executa o modo tiro
@@ -165,8 +160,7 @@ public class teleopseletiva extends LinearOpMode {
     /** Mostra no Driver Station o estado de todos os subsistemas. */
     private void atualizarTelemetria() {
         telemetry.addData("Tempo de partida", tempoDePartida.toString());
-        // TESTE DO SHOOTER: chassi desativado. Descomente para voltar a dirigir.
-        // telemetry.addData("Ângulo do robô (graus)", chassi.getAnguloEmGraus());
+        telemetry.addData("Ângulo do robô (graus)", chassi.getAnguloEmGraus());
         telemetry.addData("Shooter", shooterLigado ? "LIGADO" : "DESLIGADO");
         telemetry.addData("Shooter pronto para atirar", shooter.estaProntoParaAtirar() ? "SIM" : "NÃO");
         telemetry.addData("Shooter alvo (RPM)", shooter.getVelocidadeAlvoRPM());
@@ -180,8 +174,7 @@ public class teleopseletiva extends LinearOpMode {
         telemetry.addData("Modo tiro", modoTiroAtivo ? "ATIVO" : "INATIVO");
         telemetry.addData("Indexers", indexer.estaGirando() ? "GIRANDO" : "PARADOS");
         telemetry.addData("Liberador", liberador.getEstadoAtual());
-        // TESTE DO SHOOTER: intake desativado. Descomente para voltar a coletar.
-        // telemetry.addData("Intake", intake.getEstadoAtual());
+        telemetry.addData("Intake", intake.getEstadoAtual());
         telemetry.update();
     }
 }
