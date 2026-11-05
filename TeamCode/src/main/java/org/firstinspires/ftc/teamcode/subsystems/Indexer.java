@@ -22,6 +22,12 @@ public class Indexer {
     /** Potência dos indexers ao alimentar o shooter (-1 a 1; troque o sinal se girarem ao contrário). */
     public static double POTENCIA_ALIMENTAR = 1.0;
 
+    /** Potência baixa usada para enfileirar o próximo pólen no liberador (-1 a 1). */
+    public static double POTENCIA_ENFILEIRAR = 0.3;
+
+    /** Tempo (s) que os indexers giram devagar para enfileirar o próximo pólen. */
+    public static double TEMPO_ENFILEIRAR_S = 0.3;
+
     // ===================== ESTADO =====================
 
     private boolean girando = false;
@@ -56,6 +62,12 @@ public class Indexer {
     /** Gira os indexers para levar o pólen até o shooter. */
     public void alimentar() {
         definirPotencia(POTENCIA_ALIMENTAR);
+        girando = true;
+    }
+
+    /** Gira os indexers devagar, só para encostar o próximo pólen no liberador. */
+    public void enfileirar() {
+        definirPotencia(POTENCIA_ENFILEIRAR);
         girando = true;
     }
 
