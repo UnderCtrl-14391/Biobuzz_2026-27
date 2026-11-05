@@ -136,8 +136,8 @@ public class teleopseletiva extends LinearOpMode {
         botaoAAnterior = botaoAAtual;
 
         // Leitura dos botões e do analógico esquerdo Y do gamepad2
-        boolean rightBumper = gamepad2.right_bumper || gamepad1.right_bumper;
-        boolean botaoB = gamepad2.b || gamepad1.b;
+        boolean rightBumper = gamepad2.right_bumper;
+        boolean botaoB = gamepad2.b;
         double analogicoIntake = gamepad2.left_stick_y;
 
         // Prioridade de acionamento do intake: R1 > B > Analógico
@@ -146,6 +146,7 @@ public class teleopseletiva extends LinearOpMode {
             intake.coletar();
         } else if (botaoB) {
             intake.expelir();
+            modoTiroAtivo = true;
         } else if (Math.abs(analogicoIntake) > 0.1) {
             modoTiroAtivo = false;
             intake.controlarPorAnalogico(analogicoIntake);

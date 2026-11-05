@@ -17,10 +17,10 @@ public class Liberador {
     // ===================== CONSTANTES DE AJUSTE =====================
 
     /** Posição do servo segurando o pólen, com a passagem fechada (0.0 a 1.0). */
-    public static double POSICAO_SEGURAR = 0.3;
+    public static double POSICAO_SEGURAR = 0;
 
     /** Posição do servo liberando o pólen para o shooter, com a passagem aberta (0.0 a 1.0). */
-    public static double POSICAO_LIBERAR = 0.7;
+    public static double POSICAO_LIBERAR = 1;
 
     // ===================== ESTADO =====================
 

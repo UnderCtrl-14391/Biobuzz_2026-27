@@ -53,6 +53,7 @@ public class AutoFunction extends LinearOpMode {
             TrasE.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             FrenteE.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             FrenteD.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
         }
         public void autonomous(int DFrente, int EFrente, int ETras, int DTras, double Dpower, double Epower, double intake,int Servo,int Servo2, int Servo3, int Servo4, double shooter, double shooter2, int Runtime) {
 
