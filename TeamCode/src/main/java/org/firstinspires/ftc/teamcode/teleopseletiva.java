@@ -17,17 +17,17 @@ import org.firstinspires.ftc.teamcode.subsystems.Shooter;
  * e diz a cada subsistema o que fazer. A lógica de cada mecanismo fica
  * na pasta "subsystems".
  *
- * CONTROLES (somente o gamepad 1 é usado)
- *   - Analógico esquerdo ... mover (frente/trás e para os lados), relativo ao campo
- *   - Analógico direito .... girar
- *   - L1 ................... liga/desliga o shooter (sobe até VELOCIDADE_ALVO_RPM)
- *   - A .................... ativa o MODO TIRO:
- *                              * os indexers giram levando o pólen até o liberador;
- *                              * o liberador segura o pólen e só o solta para o
- *                                shooter quando ele está acima de
- *                                VELOCIDADE_MINIMA_PARA_ATIRAR_RPM.
- *                            O modo tiro continua ativo até o R1 ser apertado.
- *   - R1 (segurar) ......... coleta com o intake e cancela o modo tiro
+ * CONTROLES:
+ *   Gamepad 1:
+ *   - Analógico esquerdo ........... mover robô (frente/trás e lateral)
+ *   - Analógico direito (X) ........ girar robô
+ *
+ *   Gamepad 2:
+ *   - Analógico esquerdo (Y) ....... controle proporcional do intake (frente = coleta, trás = expeli)
+ *   - R1 (Right Bumper) ............ coleta rápida com o intake (100%) e cancela o modo tiro
+ *   - B ............................ expele peças com o intake (100%)
+ *   - L1 ........................... liga/desliga o shooter
+ *   - A ............................ ativa o MODO TIRO
  */
 @TeleOp(name = "seletiva")
 public class teleopseletiva extends LinearOpMode {
@@ -48,7 +48,7 @@ public class teleopseletiva extends LinearOpMode {
     /** true quando o shooter foi ligado pelo L1. */
     private boolean shooterLigado = false;
 
-    /** true depois que o A é apertado; só volta a false quando o R1 é apertado. */
+    /** true depois que o A é apertado; só volta a false quando o R1 ou o intake for acionado. */
     private boolean modoTiroAtivo = false;
 
     // Guardam se o botão estava apertado no ciclo anterior. Assim a ação
@@ -94,9 +94,9 @@ public class teleopseletiva extends LinearOpMode {
         telemetry.update();
     }
 
-    /** Analógico esquerdo move o robô (relativo ao campo) e o analógico direito gira. */
+    /** Analógico esquerdo move o robô (relativo ao robô) e o analógico direito gira. */
     private void controlarChassi() {
-        chassi.moverRelativoAoCampo(
+        chassi.moverRelativoAoRobo(
                 gamepad1.left_stick_y,   // frente/trás
                 gamepad1.left_stick_x,   // lateral
                 gamepad1.right_stick_x); // rotação
@@ -104,7 +104,7 @@ public class teleopseletiva extends LinearOpMode {
 
     /** Cada aperto do L1 liga ou desliga o shooter. */
     private void controlarShooter() {
-        boolean botaoL1Atual = gamepad1.left_bumper;
+        boolean botaoL1Atual = gamepad2.left_bumper;
         if (botaoL1Atual && !botaoL1Anterior) {
             shooterLigado = !shooterLigado;
         }
@@ -118,27 +118,37 @@ public class teleopseletiva extends LinearOpMode {
     }
 
     /**
-     * Controla o intake (R1) e o modo tiro (A).
+     * Controla o intake (via analógico, R1 / Right Bumper ou B) e o modo tiro (A).
      *
-     * - Apertar A ativa o modo tiro.
-     * - Segurar R1 coleta com o intake e cancela o modo tiro.
-     * - No modo tiro, os indexers giram o tempo todo e o liberador só solta o pólen
-     *   quando o shooter está rápido o suficiente; se a velocidade cair
-     *   (por exemplo, logo após um disparo), o liberador volta a segurar e espera.
-     * - Fora do modo tiro, o liberador fica sempre segurando.
+     * - Segurar R1 (Right Bumper): coleta com o intake (potência fixa/máxima) e cancela o modo tiro.
+     * - Segurar B: expele peças com o intake (potência fixa/máxima).
+     * - Analógico esquerdo Y (gamepad2): controle proporcional do intake
+     *     * Empurrar para FRENTE (Y negativo) -> COLETA
+     *     * Puxar para TRÁS (Y positivo) -> EXPELI
+     * - Apertar A: ativa o MODO TIRO.
      */
     private void controlarIntakeEModoTiro() {
         // Botão A: ativa o modo tiro (no momento do aperto)
-        boolean botaoAAtual = gamepad1.a;
+        boolean botaoAAtual = gamepad2.a || gamepad1.a;
         if (botaoAAtual && !botaoAAnterior) {
             modoTiroAtivo = true;
         }
         botaoAAnterior = botaoAAtual;
 
-        // Botão R1: coleta e cancela o modo tiro
-        if (gamepad1.right_bumper) {
+        // Leitura dos botões e do analógico esquerdo Y do gamepad2
+        boolean rightBumper = gamepad2.right_bumper || gamepad1.right_bumper;
+        boolean botaoB = gamepad2.b || gamepad1.b;
+        double analogicoIntake = gamepad2.left_stick_y;
+
+        // Prioridade de acionamento do intake: R1 > B > Analógico
+        if (rightBumper) {
             modoTiroAtivo = false;
             intake.coletar();
+        } else if (botaoB) {
+            intake.expelir();
+        } else if (Math.abs(analogicoIntake) > 0.1) {
+            modoTiroAtivo = false;
+            intake.controlarPorAnalogico(analogicoIntake);
         } else {
             intake.parar();
         }
@@ -160,16 +170,17 @@ public class teleopseletiva extends LinearOpMode {
     /** Mostra no Driver Station o estado de todos os subsistemas. */
     private void atualizarTelemetria() {
         telemetry.addData("Tempo de partida", tempoDePartida.toString());
-        telemetry.addData("Ângulo do robô (graus)", chassi.getAnguloEmGraus());
         telemetry.addData("Shooter", shooterLigado ? "LIGADO" : "DESLIGADO");
         telemetry.addData("Shooter pronto para atirar", shooter.estaProntoParaAtirar() ? "SIM" : "NÃO");
         telemetry.addData("Shooter alvo (RPM)", shooter.getVelocidadeAlvoRPM());
         telemetry.addData("Shooter média (RPM)", shooter.getVelocidadeMediaRPM());
         telemetry.addData("Shooter 1 (RPM)", shooter.getVelocidadeShooter1RPM());
         telemetry.addData("Shooter 2 (RPM)", shooter.getVelocidadeShooter2RPM());
+        telemetry.addData("Shooter 3 (RPM)", shooter.getVelocidadeShooter3RPM());
         // Valores crus do encoder, para conferir a conversão para RPM
         telemetry.addData("Shooter 1 (ticks/s)", shooter.getVelocidadeShooter1TicksPorSegundo());
         telemetry.addData("Shooter 2 (ticks/s)", shooter.getVelocidadeShooter2TicksPorSegundo());
+        telemetry.addData("Shooter 3 (ticks/s)", shooter.getVelocidadeShooter3TicksPorSegundo());
         telemetry.addData("Tipo de motor na configuração", shooter.getTipoDeMotorConfigurado());
         telemetry.addData("Modo tiro", modoTiroAtivo ? "ATIVO" : "INATIVO");
         telemetry.addData("Indexers", indexer.estaGirando() ? "GIRANDO" : "PARADOS");

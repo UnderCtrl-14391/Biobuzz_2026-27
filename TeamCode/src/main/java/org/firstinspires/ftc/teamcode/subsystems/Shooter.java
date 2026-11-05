@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 /**
  * Subsistema do SHOOTER.
  *
- * Dois motores que giram juntos e são controlados por VELOCIDADE (não por potência).
+ * Três motores que giram juntos e são controlados por VELOCIDADE (não por potência).
  * O controlador PIDF interno do hub mantém a velocidade constante mesmo com a bateria caindo.
  *
  * Todas as velocidades públicas deste arquivo estão em RPM (rotações por minuto) do MOTOR.
@@ -50,12 +50,13 @@ public class Shooter {
 
     private final DcMotorEx motorShooter1;
     private final DcMotorEx motorShooter2;
+    private final DcMotorEx motorShooter3;
 
     /** Última velocidade pedida aos motores, em RPM (usada na telemetria). */
     private double velocidadeAlvoRPM = 0.0;
 
     /**
-     * Construtor: busca os motores do shooter, define sentido, freio e aplica os coeficientes PIDF.
+     * Construtor: busca os três motores do shooter, define sentido, freio e aplica os coeficientes PIDF.
      *
      * @param hardwareMap mapa de hardware recebido do OpMode
      */
@@ -63,22 +64,29 @@ public class Shooter {
         // Os textos entre aspas são os nomes cadastrados na configuração do Driver Station
         motorShooter1 = hardwareMap.get(DcMotorEx.class, "shooter");
         motorShooter2 = hardwareMap.get(DcMotorEx.class, "shooter2");
+        motorShooter3 = hardwareMap.get(DcMotorEx.class, "shooter3");
 
         motorShooter1.setDirection(DcMotor.Direction.FORWARD);
         motorShooter2.setDirection(DcMotor.Direction.FORWARD);
+        motorShooter3.setDirection(DcMotor.Direction.REVERSE);
 
         // BRAKE: o motor trava quando a potência é zero
         motorShooter1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motorShooter2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        motorShooter3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // RUN_USING_ENCODER é necessário para o controle por velocidade funcionar
         motorShooter1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorShooter2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorShooter3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         motorShooter1.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
         motorShooter2.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
+        motorShooter3.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
+
         motorShooter1.setPositionPIDFCoefficients(PROPORCIONAL_POSICAO);
         motorShooter2.setPositionPIDFCoefficients(PROPORCIONAL_POSICAO);
+        motorShooter3.setPositionPIDFCoefficients(PROPORCIONAL_POSICAO);
     }
 
     /** Liga o shooter na velocidade alvo (VELOCIDADE_ALVO_RPM). */
@@ -92,7 +100,7 @@ public class Shooter {
     }
 
     /**
-     * Define a velocidade alvo dos dois motores do shooter.
+     * Define a velocidade alvo dos três motores do shooter.
      *
      * @param velocidadeRPM velocidade em rotações por minuto (0 = parado)
      */
@@ -101,11 +109,12 @@ public class Shooter {
         double ticksPorSegundo = converterRPMParaTicksPorSegundo(velocidadeRPM);
         motorShooter1.setVelocity(ticksPorSegundo);
         motorShooter2.setVelocity(ticksPorSegundo);
+        motorShooter3.setVelocity(ticksPorSegundo);
     }
 
     /**
      * Diz se o shooter já está rápido o suficiente para atirar.
-     * Usa a média dos dois motores e compara com VELOCIDADE_MINIMA_PARA_ATIRAR_RPM.
+     * Usa a média dos três motores e compara com VELOCIDADE_MINIMA_PARA_ATIRAR_RPM.
      *
      * @return true se a velocidade média for maior ou igual à mínima para atirar
      */
@@ -128,6 +137,11 @@ public class Shooter {
         return converterTicksPorSegundoParaRPM(getVelocidadeShooter2TicksPorSegundo());
     }
 
+    /** @return a velocidade real medida no motor shooter 3, em RPM */
+    public double getVelocidadeShooter3RPM() {
+        return converterTicksPorSegundoParaRPM(getVelocidadeShooter3TicksPorSegundo());
+    }
+
     /** @return a velocidade crua do encoder do shooter 1, em ticks por segundo (sem conversão) */
     public double getVelocidadeShooter1TicksPorSegundo() {
         return motorShooter1.getVelocity();
@@ -138,14 +152,19 @@ public class Shooter {
         return motorShooter2.getVelocity();
     }
 
+    /** @return a velocidade crua do encoder do shooter 3, em ticks por segundo (sem conversão) */
+    public double getVelocidadeShooter3TicksPorSegundo() {
+        return motorShooter3.getVelocity();
+    }
+
     /** @return o nome do tipo de motor cadastrado na configuração do Driver Station (para conferência) */
     public String getTipoDeMotorConfigurado() {
         return motorShooter1.getMotorType().getName();
     }
 
-    /** @return a média da velocidade real dos dois motores, em RPM */
+    /** @return a média da velocidade real dos três motores, em RPM */
     public double getVelocidadeMediaRPM() {
-        return (getVelocidadeShooter1RPM() + getVelocidadeShooter2RPM()) / 2.0;
+        return (getVelocidadeShooter1RPM() + getVelocidadeShooter2RPM() + getVelocidadeShooter3RPM()) / 3.0;
     }
 
     /**
