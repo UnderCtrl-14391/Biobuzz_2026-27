@@ -13,13 +13,17 @@ public class Intake {
     // ===================== CONSTANTES DE AJUSTE =====================
 
     /** Potência usada para coletar peças via botão digital. */
-    public static double POTENCIA_COLETAR = -0.9;
+    public static double POTENCIA_COLETAR = -1;
 
     /** Potência usada para expelir peças via botão digital. */
-    public static double POTENCIA_EXPELIR = 0.9;
+    public static double POTENCIA_EXPELIR = 1;
 
     /** Potência com o intake parado. */
     public static double POTENCIA_PARADO = 0.0;
+
+    public static double POTENCIA_AUTONOMO = -0.3;
+
+
 
     // ===================== ESTADO =====================
 
@@ -48,6 +52,12 @@ public class Intake {
         definirPotencia(POTENCIA_COLETAR);
         estadoAtual = Estado.COLETANDO;
     }
+
+    public void coletarAutonomo() {
+        definirPotencia(POTENCIA_AUTONOMO);
+        estadoAtual = Estado.COLETANDO;
+    }
+
 
     /** Liga o intake no sentido de expelir peças (potência fixa). */
     public void expelir() {

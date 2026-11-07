@@ -21,11 +21,23 @@ public class Shooter {
 
     // ===================== CONSTANTES DE AJUSTE =====================
 
-    /** Velocidade que o shooter tenta alcançar quando é ligado (RPM). */
-    public static double VELOCIDADE_ALVO_RPM = 6200.0;
+    /** Velocidade que o shooter tenta alcançar para PÓLEN (RPM). */
+    public static double VELOCIDADE_POLEN_RPM = 2650;
 
-    /** Velocidade mínima para o shooter ser considerado pronto para atirar (RPM). */
-    public static double VELOCIDADE_MINIMA_PARA_ATIRAR_RPM = 1172.0;
+    /** Velocidade mínima para o shooter ser considerado pronto para atirar PÓLEN (RPM). */
+    public static double VELOCIDADE_MINIMA_POLEN_RPM = 2550;
+
+    /** Velocidade que o shooter tenta alcançar para NÉCTAR (RPM). */
+    public static double VELOCIDADE_NECTAR_RPM = 2800;
+
+    /** Velocidade mínima para o shooter ser considerado pronto para atirar NÉCTAR (RPM). */
+    public static double VELOCIDADE_MINIMA_NECTAR_RPM = 3000;
+
+    /** Velocidade padrão do shooter (RPM). */
+    public static double VELOCIDADE_ALVO_RPM = 2650;
+
+    /** Velocidade mínima padrão para o shooter ser considerado pronto para atirar (RPM). */
+    public static double VELOCIDADE_MINIMA_PARA_ATIRAR_RPM = 2650;
 
     // Coeficientes do controlador PIDF de velocidade
     public static double PIDF_PROPORCIONAL = 1.26;
@@ -71,27 +83,37 @@ public class Shooter {
         motorShooter3.setDirection(DcMotor.Direction.REVERSE);
 
         // BRAKE: o motor trava quando a potência é zero
-        motorShooter1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorShooter2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorShooter3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        motorShooter1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        motorShooter2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        motorShooter3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         // RUN_USING_ENCODER é necessário para o controle por velocidade funcionar
         motorShooter1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorShooter2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorShooter3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        motorShooter1.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
-        motorShooter2.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
-        motorShooter3.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
+        //motorShooter1.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
+        //motorShooter2.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
+        //motorShooter3.setVelocityPIDFCoefficients(PIDF_PROPORCIONAL, PIDF_INTEGRAL, PIDF_DERIVATIVO, PIDF_FEEDFORWARD);
 
         motorShooter1.setPositionPIDFCoefficients(PROPORCIONAL_POSICAO);
         motorShooter2.setPositionPIDFCoefficients(PROPORCIONAL_POSICAO);
         motorShooter3.setPositionPIDFCoefficients(PROPORCIONAL_POSICAO);
     }
 
-    /** Liga o shooter na velocidade alvo (VELOCIDADE_ALVO_RPM). */
+    /** Liga o shooter na velocidade do pólen (VELOCIDADE_POLEN_RPM). */
+    public void ligarPolen() {
+        definirVelocidadeRPM(VELOCIDADE_POLEN_RPM);
+    }
+
+    /** Liga o shooter na velocidade do néctar (VELOCIDADE_NECTAR_RPM). */
+    public void ligarNectar() {
+        definirVelocidadeRPM(VELOCIDADE_NECTAR_RPM);
+    }
+
+    /** Liga o shooter na velocidade padrão. */
     public void ligar() {
-        definirVelocidadeRPM(VELOCIDADE_ALVO_RPM);
+        ligarPolen();
     }
 
     /** Para o shooter (velocidade alvo = 0). */
@@ -110,6 +132,16 @@ public class Shooter {
         motorShooter1.setVelocity(ticksPorSegundo);
         motorShooter2.setVelocity(ticksPorSegundo);
         motorShooter3.setVelocity(ticksPorSegundo);
+    }
+
+    /** Diz se o shooter está pronto para atirar PÓLEN. */
+    public boolean estaProntoParaAtirarPolen() {
+        return getVelocidadeMediaRPM() >= VELOCIDADE_MINIMA_POLEN_RPM;
+    }
+
+    /** Diz se o shooter está pronto para atirar NÉCTAR. */
+    public boolean estaProntoParaAtirarNectar() {
+        return getVelocidadeMediaRPM() >= VELOCIDADE_MINIMA_NECTAR_RPM;
     }
 
     /**

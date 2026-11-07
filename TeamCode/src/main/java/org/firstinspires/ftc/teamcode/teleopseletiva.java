@@ -18,18 +18,16 @@ import org.firstinspires.ftc.teamcode.subsystems.Shooter;
  * na pasta "subsystems".
  *
  * CONTROLES:
- *   Gamepad 1:
+ *   Gamepad 1 (Piloto):
  *   - Analógico esquerdo ........... mover robô (frente/trás e lateral)
  *   - Analógico direito (X) ........ girar robô
  *
- *   Gamepad 2:
- *   - Analógico esquerdo (Y) ....... controle proporcional do intake (frente = coleta, trás = expeli)
- *   - R1 (Right Bumper) ............ coleta rápida com o intake (100%)
- *   - L1 ........................... liga/desliga o shooter (serve para os dois tiros)
- *   - A ............................ atira 1 PÓLEN: abre a trava 2 por 0,15 s e fecha
- *   - B ............................ atira 1 NÉCTAR: abre a trava 1 por 0,15 s, fecha e o
- *                                    indexer enfileira o próximo; enquanto segurado,
- *                                    também expele com o intake (100%)
+ *   Gamepad 2 (Operador) / Gamepad 1:
+ *   - Left Bumper (L1) / Botão A ... Ligar Shooter PÓLEN (2650 RPM) + abre Trava 2 ao atingir velocidade
+ *   - Right Bumper (R1) / Botão B .. Ligar Shooter NÉCTAR (2800 RPM) + abre Trava 1 ao atingir velocidade
+ *   - Analógico esquerdo (Y) ....... controle proporcional do intake (frente = coleta, trás = expele)
+ *   - Left Trigger (LT / L2) ....... coleta com o intake (100%)
+ *   - Right Trigger (RT / R2) ...... expele com o intake (100%)
  */
 @TeleOp(name = "seletiva")
 public class teleopseletiva extends LinearOpMode {
@@ -47,27 +45,13 @@ public class teleopseletiva extends LinearOpMode {
 
     // ===================== ESTADO DO TELEOP =====================
 
-    /** true quando o shooter foi ligado pelo L1. */
+    /** true quando o shooter está sendo acionado (L1 ou R1 pressionado). */
     private boolean shooterLigado = false;
 
-    /** Qual tiro foi pedido por último: pólen (A) ou néctar (B). */
+    /** Qual tiro foi acionado por último: pólen (LB/A) ou néctar (RB/B). */
     private enum ModoTiro { POLEN, NECTAR }
 
     private ModoTiro modoTiro = ModoTiro.POLEN;
-
-    /** Etapas de um disparo: fechado -> abre (0,15 s) -> enfileira (só néctar) -> fechado. */
-    private enum EtapaTiro { FECHADO, ABERTO, ENFILEIRANDO }
-
-    private EtapaTiro etapaTiro = EtapaTiro.FECHADO;
-
-    /** Conta quanto tempo o ciclo de tiro está na etapa atual. */
-    private final ElapsedTime tempoNaEtapa = new ElapsedTime();
-
-    // Guardam se o botão estava apertado no ciclo anterior. Assim a ação
-    // só acontece no momento em que o botão é apertado, e não enquanto ele é segurado.
-    private boolean botaoL1Anterior = false;
-    private boolean botaoAAnterior = false;
-    private boolean botaoBAnterior = false;
 
     /**
      * Método principal do OpMode: inicializa os subsistemas, espera o START
@@ -82,8 +66,8 @@ public class teleopseletiva extends LinearOpMode {
 
         while (opModeIsActive()) {
             controlarChassi();
-            controlarShooter();
-            controlarIntakeEModoTiro();
+            controlarShooterETravas();
+            controlarIntake();
             atualizarTelemetria();
         }
     }
@@ -110,130 +94,95 @@ public class teleopseletiva extends LinearOpMode {
         telemetry.update();
     }
 
-    /** Analógico esquerdo move o robô (relativo ao robô) e o analógico direito gira. */
+    /** Analógico esquerdo move o robô (relativo à quadra) e o analógico direito gira (Gamepad 1). */
     private void controlarChassi() {
-        chassi.moverRelativoAoRobo(
-                gamepad1.left_stick_y,   // frente/trás
+        if (gamepad1.options || gamepad1.back) {
+            chassi.zerarAngulo();
+        }
+
+        chassi.moverRelativoAQuadra(
+                -gamepad1.left_stick_y,   // frente/trás
                 gamepad1.left_stick_x,   // lateral
-                gamepad1.right_stick_x); // rotação
-    }
-
-    /** Cada aperto do L1 liga ou desliga o shooter. */
-    private void controlarShooter() {
-        boolean botaoL1Atual = gamepad2.left_bumper;
-        if (botaoL1Atual && !botaoL1Anterior) {
-            shooterLigado = !shooterLigado;
-        }
-        botaoL1Anterior = botaoL1Atual;
-
-        if (shooterLigado) {
-            shooter.ligar();
-        } else {
-            shooter.parar();
-        }
+                -gamepad1.right_stick_x); // rotação
     }
 
     /**
-     * Controla o intake (via analógico, R1 / Right Bumper ou B) e os disparos (A e B).
+     * Controla o shooter e as travas de disparo (Pólen e Néctar).
      *
-     * - Apertar A: atira 1 pólen (ver executarDisparo).
-     * - Apertar B: atira 1 néctar (e, enquanto segurado, expele com o intake).
-     * - Segurar R1 (Right Bumper): coleta com o intake (potência fixa/máxima).
-     * - Analógico esquerdo Y (gamepad2): controle proporcional do intake
-     *     * Empurrar para FRENTE (Y negativo) -> COLETA
-     *     * Puxar para TRÁS (Y positivo) -> EXPELI
+     * CONTROLES:
+     * - Left Bumper (L1) ou A: Liga o shooter na velocidade do PÓLEN (Shooter.VELOCIDADE_POLEN_RPM)
+     *   e abre a Trava 2 (pólen) assim que a velocidade ideal é atingida.
+     * - Right Bumper (R1) ou B: Liga o shooter na velocidade do NÉCTAR (Shooter.VELOCIDADE_NECTAR_RPM)
+     *   e abre a Trava 1 (néctar) assim que a velocidade ideal é atingida.
      */
-    private void controlarIntakeEModoTiro() {
-        // A e B: cada aperto faz um disparo
-        boolean botaoAAtual = gamepad2.a || gamepad1.a;
-        boolean botaoBAtual = gamepad2.b;
-        if (botaoAAtual && !botaoAAnterior) iniciarDisparo(ModoTiro.POLEN);
-        if (botaoBAtual && !botaoBAnterior) iniciarDisparo(ModoTiro.NECTAR);
-        botaoAAnterior = botaoAAtual;
-        botaoBAnterior = botaoBAtual;
+    private void controlarShooterETravas() {
+        boolean acionarPolen = gamepad2.left_bumper || gamepad1.left_bumper || gamepad2.a || gamepad1.a;
+        boolean acionarNectar = gamepad2.right_bumper || gamepad1.right_bumper || gamepad2.b || gamepad1.b;
 
-        // Leitura dos botões e do analógico esquerdo Y do gamepad2
-        boolean rightBumper = gamepad2.right_bumper;
+        if (acionarPolen) {
+            modoTiro = ModoTiro.POLEN;
+            shooterLigado = true;
+            shooter.ligarPolen();
+
+            if (shooter.estaProntoParaAtirarPolen()) {
+                liberador.liberarTrava2();
+                } else {
+                liberador.segurarTrava2();
+                }
+            
+
+        } else if (acionarNectar) {
+            modoTiro = ModoTiro.NECTAR;
+            shooterLigado = true;
+            shooter.ligarNectar();
+
+            if (shooter.estaProntoParaAtirarNectar()) {
+                liberador.liberarTrava1();
+                } else {
+                    liberador.segurarTrava1();
+                }
+
+        } else {
+            shooterLigado = false;
+            shooter.parar();
+            liberador.segurarTrava1();
+            liberador.segurarTrava2();
+        }
+    }
+
+    /** Controla o intake (via analógico Y ou triggers). */
+    private void controlarIntake() {
+        float leftTrigger = Math.max(gamepad2.left_trigger, gamepad1.left_trigger);
+        float rightTrigger = Math.max(gamepad2.right_trigger, gamepad1.right_trigger);
         double analogicoIntake = gamepad2.left_stick_y;
 
-        // Prioridade de acionamento do intake: R1 > B > Analógico
-        if (rightBumper) {
+        if (leftTrigger > 0.1f) {
             intake.coletar();
-        } else if (botaoBAtual) {
+        } else if (rightTrigger > 0.1f) {
             intake.expelir();
         } else if (Math.abs(analogicoIntake) > 0.1) {
             intake.controlarPorAnalogico(analogicoIntake);
         } else {
             intake.parar();
         }
-
-        executarDisparo();
-    }
-
-    /** Começa um disparo: abre a trava do tiro escolhido (reinicia se já estiver no meio de um). */
-    private void iniciarDisparo(ModoTiro novoModo) {
-        liberador.segurar();
-        modoTiro = novoModo;
-        mudarEtapaTiro(EtapaTiro.ABERTO);
-    }
-
-    /**
-     * Um disparo por aperto de botão:
-     *   1. ABERTO: abre a trava por Liberador.TEMPO_ABERTO_S (0,15 s).
-     *        - pólen (A): trava 2;  néctar (B): trava 1.
-     *   2. ENFILEIRANDO (só néctar): fecha a trava e o indexer gira devagar por
-     *      Indexer.TEMPO_ENFILEIRAR_S para enfileirar o próximo néctar.
-     *   3. FECHADO: travas fechadas e indexer parado até o próximo aperto.
-     */
-    private void executarDisparo() {
-        switch (etapaTiro) {
-            case ABERTO:
-                if (modoTiro == ModoTiro.NECTAR) liberador.liberarTrava1(); else liberador.liberarTrava2();
-                indexer.parar();
-                if (tempoNaEtapa.seconds() >= Liberador.TEMPO_ABERTO_S) {
-                    mudarEtapaTiro(modoTiro == ModoTiro.NECTAR ? EtapaTiro.ENFILEIRANDO : EtapaTiro.FECHADO);
-                }
-                break;
-
-            case ENFILEIRANDO:
-                liberador.segurar();
-                indexer.enfileirar();
-                if (tempoNaEtapa.seconds() >= Indexer.TEMPO_ENFILEIRAR_S) {
-                    mudarEtapaTiro(EtapaTiro.FECHADO);
-                }
-                break;
-
-            case FECHADO:
-                liberador.segurar();
-                indexer.parar();
-                break;
-        }
-    }
-
-    /** Troca a etapa do ciclo de tiro e zera o cronômetro da etapa. */
-    private void mudarEtapaTiro(EtapaTiro novaEtapa) {
-        etapaTiro = novaEtapa;
-        tempoNaEtapa.reset();
     }
 
     /** Mostra no Driver Station o estado de todos os subsistemas. */
     private void atualizarTelemetria() {
         telemetry.addData("Tempo de partida", tempoDePartida.toString());
-        telemetry.addData("Shooter", shooterLigado ? "LIGADO" : "DESLIGADO");
-        telemetry.addData("Shooter pronto para atirar", shooter.estaProntoParaAtirar() ? "SIM" : "NÃO");
+        telemetry.addData("Shooter", shooterLigado ? "LIGADO (" + modoTiro + ")" : "DESLIGADO");
+        telemetry.addData("Shooter pronto (Pólen)", shooter.estaProntoParaAtirarPolen() ? "SIM" : "NÃO");
+        telemetry.addData("Shooter pronto (Néctar)", shooter.estaProntoParaAtirarNectar() ? "SIM" : "NÃO");
         telemetry.addData("Shooter alvo (RPM)", shooter.getVelocidadeAlvoRPM());
         telemetry.addData("Shooter média (RPM)", shooter.getVelocidadeMediaRPM());
         telemetry.addData("Shooter 1 (RPM)", shooter.getVelocidadeShooter1RPM());
         telemetry.addData("Shooter 2 (RPM)", shooter.getVelocidadeShooter2RPM());
         telemetry.addData("Shooter 3 (RPM)", shooter.getVelocidadeShooter3RPM());
-        // Valores crus do encoder, para conferir a conversão para RPM
         telemetry.addData("Shooter 1 (ticks/s)", shooter.getVelocidadeShooter1TicksPorSegundo());
         telemetry.addData("Shooter 2 (ticks/s)", shooter.getVelocidadeShooter2TicksPorSegundo());
         telemetry.addData("Shooter 3 (ticks/s)", shooter.getVelocidadeShooter3TicksPorSegundo());
         telemetry.addData("Tipo de motor na configuração", shooter.getTipoDeMotorConfigurado());
-        telemetry.addData("Último tiro", modoTiro);
         telemetry.addData("Indexers", indexer.estaGirando() ? "GIRANDO" : "PARADOS");
-        telemetry.addData("Etapa do tiro", etapaTiro);
         telemetry.addData("Trava 1 (néctar)", liberador.getEstadoTrava1());
         telemetry.addData("Trava 2 (pólen)", liberador.getEstadoTrava2());
         telemetry.addData("Intake", intake.getEstadoAtual());

@@ -10,9 +10,9 @@ public class Auto2Tip extends AutoFunction {
         waitForStart();
 
         stopResetMotors();
-        autonomous(0,0,0,0,0,0,0,0,0,0,0,6000,6000,0);
+        autonomous(0,0,0,0,0,0,0,0,0,6000,6000,0,700);
 
         stopResetMotors();
-        autonomous(0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+        autonomous(0,0,0,0,0,0,0,0,0,0,0,0, 700);
     }
 }
