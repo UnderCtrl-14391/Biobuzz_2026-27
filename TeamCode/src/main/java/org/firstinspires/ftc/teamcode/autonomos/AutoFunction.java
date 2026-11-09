@@ -2,13 +2,14 @@ package org.firstinspires.ftc.teamcode.autonomos;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@Autonomous (name = "AutoFunction", group = "Autonomous" )
+@Autonomous(name = "AutoFunction", group = "Autonomous")
 public class AutoFunction extends LinearOpMode {
 
     private final ElapsedTime runtime = new ElapsedTime();
@@ -16,7 +17,9 @@ public class AutoFunction extends LinearOpMode {
     public Servo trava1, trava2;
     public DcMotorEx Shooter, Shooter2, Shooter3;
 
-
+    // Servos flower1 e flower2
+    public CRServo flower1, flower2;
+    public Servo flower1Pos, flower2Pos;
 
     public void HardwareMap(com.qualcomm.robotcore.hardware.HardwareMap HardwareMap) {
         FrenteE = HardwareMap.get(DcMotor.class, "esquerda");
@@ -28,7 +31,6 @@ public class AutoFunction extends LinearOpMode {
         Shooter2 = HardwareMap.get(DcMotorEx.class, "shooter2");
         Shooter3 = HardwareMap.get(DcMotorEx.class, "shooter3");
 
-
         try {
             trava1 = HardwareMap.get(Servo.class, "trava1");
         } catch (Exception ignored) {
@@ -39,6 +41,30 @@ public class AutoFunction extends LinearOpMode {
             trava2 = HardwareMap.get(Servo.class, "trava2");
         } catch (Exception ignored) {
             trava2 = null;
+        }
+
+        try {
+            flower1 = HardwareMap.get(CRServo.class, "flower1");
+        } catch (Exception e1) {
+            try {
+                flower1 = HardwareMap.get(CRServo.class, "flower");
+            } catch (Exception e2) {
+                try {
+                    flower1Pos = HardwareMap.get(Servo.class, "flower1");
+                } catch (Exception e3) {
+                    try {
+                        flower1Pos = HardwareMap.get(Servo.class, "flower");
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+
+        try {
+            flower2 = HardwareMap.get(CRServo.class, "flower2");
+        } catch (Exception e1) {
+            try {
+                flower2Pos = HardwareMap.get(Servo.class, "flower2");
+            } catch (Exception ignored) {}
         }
 
         FrenteE.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -57,6 +83,22 @@ public class AutoFunction extends LinearOpMode {
         Shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         Shooter2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         Shooter3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // Inicia com as flowers em repouso (0.7 / igual ao teleoperado)
+        setFlowers(false);
+    }
+
+    /**
+     * Define o estado dos servos flower1 e flower2 durante o autônomo (igual ao teleoperado):
+     * - acionado = true: aciona os servos (0.0)
+     * - acionado = false: repouso/inicial (0.7)
+     */
+    public void setFlowers(boolean acionado) {
+        double val = acionado ? 0.0 : 0.6;
+        if (flower1 != null) flower1.setPower(val);
+        if (flower2 != null) flower2.setPower(val);
+        if (flower1Pos != null) flower1Pos.setPosition(val);
+        if (flower2Pos != null) flower2Pos.setPosition(val);
     }
 
     public void stopMotors() {
@@ -73,11 +115,12 @@ public class AutoFunction extends LinearOpMode {
         FrenteD.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
     }
 
-    public void autonomous(int DFrente, int EFrente, int ETras, int DTras, double Dpower, double Epower, double intake, double posTrava1, double posTrava2, double shooter, double shooter2, double shooter3, int Runtime) {
+    public void autonomous(int DFrente, int EFrente, int ETras, int DTras, double Dpower, double Epower, double intake, double posTrava1, double posTrava2, double flower, double shooter, double shooter2, double shooter3, int Runtime) {
         runtime.reset();
 
         if (trava1 != null) trava1.setPosition(posTrava1);
         if (trava2 != null) trava2.setPosition(posTrava2);
+        setFlowers(flower > 0.0);
 
         boolean temAlvoMovimento = (DFrente != 0 || EFrente != 0 || ETras != 0 || DTras != 0);
 

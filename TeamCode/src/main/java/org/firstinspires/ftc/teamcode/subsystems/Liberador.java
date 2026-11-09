@@ -8,8 +8,8 @@ import com.qualcomm.robotcore.hardware.Servo;
  *
  * Dois servos que ficam SEGURANDO as peças antes do shooter e só as
  * LIBERAM quando o shooter está rápido o suficiente para atirar:
- *   - trava1: libera o NÉCTAR (botão B no teleop);
- *   - trava2: libera o PÓLEN (botão A no teleop).
+ *   - trava1: libera o NÉCTAR (botão B / R1 no teleop);
+ *   - trava2: libera o PÓLEN (botão A / L1 no teleop).
  * Cada trava é controlada separadamente e tem duas posições: SEGURANDO (bloqueia a passagem) e LIBERANDO (abre a passagem).
  * Se algum servo não estiver na configuração do robô, o código continua funcionando
  * (apenas ignora os comandos daquele servo) e o teleop mostra um aviso na telemetria.
@@ -18,11 +18,11 @@ public class Liberador {
 
     // ===================== CONSTANTES DE AJUSTE =====================
 
-    /** Posição da trava 1 segurando o pólen, com a passagem fechada (0.0 a 1.0). */
-    public static double POSICAO_SEGURAR_TRAVA1 = 1;
+    /** Posição da trava 1 segurando a peça, com a passagem fechada (0.0 a 1.0). */
+    public static double POSICAO_SEGURAR_TRAVA1 = 0.3;
 
-    /** Posição da trava 1 liberando o pólen para o shooter, com a passagem aberta (0.0 a 1.0). */
-    public static double POSICAO_LIBERAR_TRAVA1 = 0;
+    /** Posição da trava 1 liberando a peça para o shooter, com a passagem aberta (0.0 a 1.0). */
+    public static double POSICAO_LIBERAR_TRAVA1 = 0.6;
 
     /** Posição da trava 2 segurando o pólen, com a passagem fechada (0.0 a 1.0). */
     public static double POSICAO_SEGURAR_TRAVA2 = 0.3;

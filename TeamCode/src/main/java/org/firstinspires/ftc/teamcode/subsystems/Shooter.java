@@ -22,16 +22,16 @@ public class Shooter {
     // ===================== CONSTANTES DE AJUSTE =====================
 
     /** Velocidade que o shooter tenta alcançar para PÓLEN (RPM). */
-    public static double VELOCIDADE_POLEN_RPM = 2650;
+    public static double VELOCIDADE_POLEN_RPM = 2850;
 
     /** Velocidade mínima para o shooter ser considerado pronto para atirar PÓLEN (RPM). */
-    public static double VELOCIDADE_MINIMA_POLEN_RPM = 2550;
+    public static double VELOCIDADE_MINIMA_POLEN_RPM = 2850;
 
     /** Velocidade que o shooter tenta alcançar para NÉCTAR (RPM). */
-    public static double VELOCIDADE_NECTAR_RPM = 2800;
+    public static double VELOCIDADE_NECTAR_RPM = 3700;
 
     /** Velocidade mínima para o shooter ser considerado pronto para atirar NÉCTAR (RPM). */
-    public static double VELOCIDADE_MINIMA_NECTAR_RPM = 3000;
+    public static double VELOCIDADE_MINIMA_NECTAR_RPM = 3700;
 
     /** Velocidade padrão do shooter (RPM). */
     public static double VELOCIDADE_ALVO_RPM = 2650;
