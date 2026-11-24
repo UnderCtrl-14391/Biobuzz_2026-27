@@ -15,34 +15,52 @@ public class Auto2Tip extends AutoFunction {
     @Override
     public void runOpMode() {
         HardwareMap(hardwareMap);
-        waitForStart();
         intake = new Intake(hardwareMap);
         shooter = new Shooter(hardwareMap);
         liberador = new Liberador(hardwareMap);
 
+        waitForStart();
+
         if (opModeIsActive()) {
 
-            shooter.ligar();
-            while (!shooter.estaProntoParaAtirar()) {
+            shooter.ligarPolenAuto();
+            while (opModeIsActive() && !shooter.estaProntoParaAtirarAuto()) {
             }
-            sleep(1000);
+            sleep(100);
             liberador.liberarTrava2();
             setFlowers(true);
             intake.coletarAutonomo();
-            sleep(4000);
+            sleep(200);
             setFlowers(false);
 
             stopResetMotors();
-            autonomous(-400, -400, -400, -400, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 3200, 700);
+            autonomous(400, 400, 400, 400, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 3200, 1200);
 
             stopResetMotors();
-            autonomous(-2000, 2000, -2000, 2000, 0.7, 0.7, 0, 0, 0, 0, 0, 0, 0, 2000);
+            autonomous(2500, -2500, 2500, -2500, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 0, 3000);
 
             stopResetMotors();
-            autonomous(-3200, -3200, -3200, -3200, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 5000);
+            autonomous(-2000, 2000, 2000, -2000, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 0, 1400);
 
             stopResetMotors();
-            autonomous(-1500, 1500, -1500, 1500, 0.7, 0.7, 0, 0, 0, 0, 0, 0, 0, 1700);
+            autonomous(800, 800, 800, 800, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 3200, 1200);
+
+            stopResetMotors();
+            autonomous(-400, -400, -400, -400, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 0, 700);
+
+            stopResetMotors();
+            autonomous(600, -600, 600, -600, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 0, 900);
+
+            stopResetMotors();
+            autonomous(-5500, -5500, -5500, -5500, 0.6, 0.6, 0, 0, 0, 1, 0, 0, 0, 3000);
+
+            stopResetMotors();
+            autonomous(3000, -3000, 3000, -3000, 0.5, 0.5, 0, 0, 0, 1, 0, 0, 0, 1200);
+
+
+
+
+
 
         }
 

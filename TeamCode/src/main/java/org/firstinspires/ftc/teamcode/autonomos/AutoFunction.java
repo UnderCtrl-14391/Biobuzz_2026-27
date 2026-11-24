@@ -17,8 +17,7 @@ public class AutoFunction extends LinearOpMode {
     public Servo trava1, trava2;
     public DcMotorEx Shooter, Shooter2, Shooter3;
 
-    // Servos flower1 e flower2
-    public CRServo flower1, flower2;
+    Servo flower1, flower2;
     public Servo flower1Pos, flower2Pos;
 
     public void HardwareMap(com.qualcomm.robotcore.hardware.HardwareMap HardwareMap) {
@@ -44,10 +43,10 @@ public class AutoFunction extends LinearOpMode {
         }
 
         try {
-            flower1 = HardwareMap.get(CRServo.class, "flower1");
+            //flower1 = HardwareMap.get(CRServo.class, "flower1");
         } catch (Exception e1) {
             try {
-                flower1 = HardwareMap.get(CRServo.class, "flower");
+                //flower1 = HardwareMap.get(CRServo.class, "flower");
             } catch (Exception e2) {
                 try {
                     flower1Pos = HardwareMap.get(Servo.class, "flower1");
@@ -60,12 +59,14 @@ public class AutoFunction extends LinearOpMode {
         }
 
         try {
-            flower2 = HardwareMap.get(CRServo.class, "flower2");
+            flower2 = (Servo) HardwareMap.get(CRServo.class, "flower2");
         } catch (Exception e1) {
             try {
                 flower2Pos = HardwareMap.get(Servo.class, "flower2");
             } catch (Exception ignored) {}
         }
+
+
 
         FrenteE.setDirection(DcMotorSimple.Direction.REVERSE);
         FrenteD.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -85,20 +86,17 @@ public class AutoFunction extends LinearOpMode {
         Shooter3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Inicia com as flowers em repouso (0.7 / igual ao teleoperado)
-        setFlowers(false);
+        //setFlowers(false);
     }
 
     /**
      * Define o estado dos servos flower1 e flower2 durante o autônomo (igual ao teleoperado):
      * - acionado = true: aciona os servos (0.0)
      * - acionado = false: repouso/inicial (0.7)
-     */
-    public void setFlowers(boolean acionado) {
-        double val = acionado ? 0.0 : 0.6;
-        if (flower1 != null) flower1.setPower(val);
-        if (flower2 != null) flower2.setPower(val);
-        if (flower1Pos != null) flower1Pos.setPosition(val);
-        if (flower2Pos != null) flower2Pos.setPosition(val);
+     */public void setFlowers(boolean acionado) {
+        double val = acionado ? 0.2 : 0.6;
+        if (flower1Pos != null) flower1Pos.setPosition(1.0);
+        if (flower2Pos != null) flower2Pos.setPosition(1.0);
     }
 
     public void stopMotors() {

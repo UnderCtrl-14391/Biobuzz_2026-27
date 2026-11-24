@@ -22,22 +22,27 @@ public class Shooter {
     // ===================== CONSTANTES DE AJUSTE =====================
 
     /** Velocidade que o shooter tenta alcançar para PÓLEN (RPM). */
-    public static double VELOCIDADE_POLEN_RPM = 2850;
+    public static double VELOCIDADE_POLEN_RPM = 2600;
 
-    /** Velocidade mínima para o shooter ser considerado pronto para atirar PÓLEN (RPM). */
-    public static double VELOCIDADE_MINIMA_POLEN_RPM = 2850;
+    /** Velocidade mínima para o shooter ser considerado pronto para atirar PÓLEN (RPM). (Tolerância: ~80% de 2600) */
+    public static double VELOCIDADE_MINIMA_POLEN_RPM = 2550;
+    public static double VELOCIDADE_POLEN_RPM_AUTO = 0;
+    public static double VELOCIDADE_MINIMA_POLEN_RPM_AUTO = 0;
 
     /** Velocidade que o shooter tenta alcançar para NÉCTAR (RPM). */
-    public static double VELOCIDADE_NECTAR_RPM = 3700;
+    public static double VELOCIDADE_NECTAR_RPM = 3200;
 
-    /** Velocidade mínima para o shooter ser considerado pronto para atirar NÉCTAR (RPM). */
-    public static double VELOCIDADE_MINIMA_NECTAR_RPM = 3700;
+    /** Velocidade mínima para o shooter ser considerado pronto para atirar NÉCTAR (RPM). (Tolerância: ~85% de 3700) */
+    public static double VELOCIDADE_MINIMA_NECTAR_RPM = 3000;
 
     /** Velocidade padrão do shooter (RPM). */
     public static double VELOCIDADE_ALVO_RPM = 2650;
 
     /** Velocidade mínima padrão para o shooter ser considerado pronto para atirar (RPM). */
     public static double VELOCIDADE_MINIMA_PARA_ATIRAR_RPM = 2650;
+
+    /** Velocidade reversa do shooter (RPM). */
+    public static double VELOCIDADE_REVERSA_RPM = -700;
 
     // Coeficientes do controlador PIDF de velocidade
     public static double PIDF_PROPORCIONAL = 1.26;
@@ -111,6 +116,15 @@ public class Shooter {
         definirVelocidadeRPM(VELOCIDADE_NECTAR_RPM);
     }
 
+    /** Liga o shooter na velocidade reversa (-100 RPM). */
+    public void ligarReverso() {
+        definirVelocidadeRPM(VELOCIDADE_REVERSA_RPM);
+    }
+
+    public void ligarPolenAuto() {
+        definirVelocidadeRPM(VELOCIDADE_POLEN_RPM_AUTO);
+    }
+
     /** Liga o shooter na velocidade padrão. */
     public void ligar() {
         ligarPolen();
@@ -144,6 +158,10 @@ public class Shooter {
         return getVelocidadeMediaRPM() >= VELOCIDADE_MINIMA_NECTAR_RPM;
     }
 
+    public boolean estaProntoParaAtirarAuto() {
+        return getVelocidadeMediaRPM() >= VELOCIDADE_MINIMA_POLEN_RPM_AUTO;
+    }
+
     /**
      * Diz se o shooter já está rápido o suficiente para atirar.
      * Usa a média dos três motores e compara com VELOCIDADE_MINIMA_PARA_ATIRAR_RPM.
@@ -161,17 +179,17 @@ public class Shooter {
 
     /** @return a velocidade real medida no motor shooter 1, em RPM */
     public double getVelocidadeShooter1RPM() {
-        return converterTicksPorSegundoParaRPM(getVelocidadeShooter1TicksPorSegundo());
+        return Math.abs(converterTicksPorSegundoParaRPM(getVelocidadeShooter1TicksPorSegundo()));
     }
 
     /** @return a velocidade real medida no motor shooter 2, em RPM */
     public double getVelocidadeShooter2RPM() {
-        return converterTicksPorSegundoParaRPM(getVelocidadeShooter2TicksPorSegundo());
+        return Math.abs(converterTicksPorSegundoParaRPM(getVelocidadeShooter2TicksPorSegundo()));
     }
 
     /** @return a velocidade real medida no motor shooter 3, em RPM */
     public double getVelocidadeShooter3RPM() {
-        return converterTicksPorSegundoParaRPM(getVelocidadeShooter3TicksPorSegundo());
+        return Math.abs(converterTicksPorSegundoParaRPM(getVelocidadeShooter3TicksPorSegundo()));
     }
 
     /** @return a velocidade crua do encoder do shooter 1, em ticks por segundo (sem conversão) */
@@ -194,9 +212,24 @@ public class Shooter {
         return motorShooter1.getMotorType().getName();
     }
 
-    /** @return a média da velocidade real dos três motores, em RPM */
+    /** @return a média da velocidade real dos motores ativos, em RPM */
     public double getVelocidadeMediaRPM() {
-        return (getVelocidadeShooter1RPM() + getVelocidadeShooter2RPM() + getVelocidadeShooter3RPM()) / 3.0;
+        double v1 = getVelocidadeShooter1RPM();
+        double v2 = getVelocidadeShooter2RPM();
+        double v3 = getVelocidadeShooter3RPM();
+
+        int motoresAtivos = 0;
+        double somaRPM = 0.0;
+
+        if (v1 > 50) { somaRPM += v1; motoresAtivos++; }
+        if (v2 > 50) { somaRPM += v2; motoresAtivos++; }
+        if (v3 > 50) { somaRPM += v3; motoresAtivos++; }
+
+        if (motoresAtivos > 0) {
+            return somaRPM / motoresAtivos;
+        }
+
+        return (v1 + v2 + v3) / 3.0;
     }
 
     /**

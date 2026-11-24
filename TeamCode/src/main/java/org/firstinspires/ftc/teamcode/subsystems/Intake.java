@@ -21,7 +21,7 @@ public class Intake {
     /** Potência com o intake parado. */
     public static double POTENCIA_PARADO = 0.0;
 
-    public static double POTENCIA_AUTONOMO = -0.3;
+    public static double POTENCIA_AUTONOMO = -0.5;
 
 
 

@@ -23,12 +23,12 @@ public class loadestacionar  extends AutoFunction {
         if (opModeIsActive()) {
 
 
-            shooter.ligar();
-            while (!shooter.estaProntoParaAtirar()) {
+            shooter.ligarPolenAuto();
+            while (opModeIsActive() && !shooter.estaProntoParaAtirarAuto()) {
             }
             sleep(2000);
             liberador.liberarTrava2();
-            setFlowers(false);
+            setFlowers(true);
             intake.coletarAutonomo();
             sleep(4000);
             setFlowers(false);

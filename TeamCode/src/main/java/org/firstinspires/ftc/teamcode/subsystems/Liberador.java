@@ -19,16 +19,16 @@ public class Liberador {
     // ===================== CONSTANTES DE AJUSTE =====================
 
     /** Posição da trava 1 segurando a peça, com a passagem fechada (0.0 a 1.0). */
-    public static double POSICAO_SEGURAR_TRAVA1 = 0.3;
+    public static double POSICAO_SEGURAR_TRAVA1 = 0.85;
 
     /** Posição da trava 1 liberando a peça para o shooter, com a passagem aberta (0.0 a 1.0). */
-    public static double POSICAO_LIBERAR_TRAVA1 = 0.6;
+    public static double POSICAO_LIBERAR_TRAVA1 = 0;
 
     /** Posição da trava 2 segurando o pólen, com a passagem fechada (0.0 a 1.0). */
-    public static double POSICAO_SEGURAR_TRAVA2 = 0.3;
+    public static double POSICAO_SEGURAR_TRAVA2 = 0.47;
 
     /** Posição da trava 2 liberando o pólen para o shooter, com a passagem aberta (0.0 a 1.0). */
-    public static double POSICAO_LIBERAR_TRAVA2 = 0.6;
+    public static double POSICAO_LIBERAR_TRAVA2 = 0;
 
     /** Tempo (s) que a trava fica aberta a cada aperto do botão antes de fechar de novo. */
     public static double TEMPO_ABERTO_S = 10;
