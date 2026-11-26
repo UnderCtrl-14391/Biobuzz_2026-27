@@ -86,6 +86,38 @@ public class AutonomoIgao extends LinearOpMode {
         TrasE.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
     }
 
+    public void Shooter(double shooter1,double shooter2) {
+
+        Shooter1.setVelocity(shooter1);
+        Shooter2.setVelocity(shooter2);
+
+    }
+
+    public void stopShooter() {
+
+        Shooter1.setVelocity(0);
+        Shooter2.setVelocity(0);
+
+    }
+
+    public boolean ShooterReady(double shooter1, double shooter2) {
+
+        return Math.abs(Shooter1.getVelocity() - shooter1) < 50 &&
+                Math.abs(Shooter2.getVelocity() - shooter2) < 50;
+
+    }
+
+    public void ShooterRPM(double rpm) {
+
+        double ticksPorVolta = 28; // Exemplo!
+        double shooter1 = (rpm * ticksPorVolta) / 60.0;
+        double shooter2 = (rpm * ticksPorVolta) / 60.0;
+
+        Shooter1.setVelocity(shooter1);
+        Shooter2.setVelocity(shooter2);
+
+    }
+
     public void runOpMode() {
         HardwareMap(hardwareMap);
         waitForStart();
